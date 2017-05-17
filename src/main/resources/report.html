@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>License Report</title>
+		<meta charset="UTF-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1">
+	    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/css/bootstrap.min.css" integrity="sha384-AysaV+vQoT3kOAXZkl02PThvDr8HYKPZhNT5h/CXfBThSRXQ6jW5DO2ekP5ViFdi" crossorigin="anonymous">
+	    <script src="https://use.fontawesome.com/f38bb41ccb.js"></script>
+	    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+	</head>
+	<body>
+	<div id="app" class="container-fluid" >
+		<br />
+		<div class="row" id="info-header" >
+			<div class="col-md-2"></div>
+			<div class="col-md-8 card" style="padding: 10px;">
+				<div class="row">
+					<div class="col-md-6">
+						<h2>License audit</h2>
+							Project name: <b>{{report.project.name}}</b><br />
+							Artifact: <b>{{report.project.groupId}}:{{report.project.artifactId}}</b><br />
+							Version: <b>{{report.project.version}}</b><br />
+							Report generated on: {{report.timestamp}}<br />
+					</div>
+					<div class="col-md-6">
+						<br /><br />
+						<button class="btn btn-success"><span class="fa fa-download"></span> Download conf</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<br />
+		<ul class="nav nav-tabs" role="tablist">
+			<li class="nav-item">
+				<a class="nav-link active" data-toggle="tab" role="tab" href="#deps">Dependencies</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" data-toggle="tab" role="tab" href="#lics">Licenses</a>
+			</li>
+		</ul>
+		<div class="tab-content">
+			<div class="tab-pane active" id="deps" role="tabpanel">
+				<table class="table table-sm">
+					<thead><tr>
+						<th>Artifact</th>
+						<th>Version</th>
+						<th>Scope</th>
+						<th>License</th>
+						<th></th>
+					</tr></thead>
+					<tbody><tr v-for="dep in report.project.dependencies" v-bind:class="getRowClass(dep.license.name)">
+						<td>{{dep.groupId}}:<b>{{dep.artifactId}}</b></td>
+						<td>{{dep.version}}</td>
+						<td>{{dep.scope}}</td>
+						<td>{{dep.license.name}} <span v-if="dep.license.name !== 'Unknown'">[<a v-bind:href="dep.license.url">Link</a>]</span></td>
+						<td><span v-if="showButtons(dep.license.name)">
+								<button type="button" class="btn btn-sm btn-success" v-on:click="approve(dep.license.name)"><span class="fa fa-thumbs-up"></span></button>
+								<button type="button" class="btn btn-sm btn-danger" v-on:click="reject(dep.license.name)"><span class="fa fa-thumbs-down"></span></button>
+							</span>
+						</td>
+					</tr></tbody>
+				</table>
+			</div>
+			<div class="tab-pane" id="lics" role="tabpanel">
+				<table class="table table-sm">
+					<thead><tr>
+						<th>Name</th>
+						<th>Url</th>
+						<th></th>
+					</tr></thead>
+					<tbody><tr v-for="lic in report.licenses" v-bind:class="getRowClass(lic.name)">
+						<td>{{lic.name}}</td>
+						<td><a v-bind:href="lic.url">{{lic.url}}</a></td>
+						<td><span v-if="lic.name !== 'Unknown'">
+							<button type="button" class="btn btn-sm btn-success" v-on:click="approve(lic.name)"><span class="fa fa-thumbs-up"></span></button>
+							<button type="button" class="btn btn-sm btn-danger" v-on:click="reject(lic.name)"><span class="fa fa-thumbs-down"></span></button></span>
+						</td>
+					</tr></tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	<script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+   	<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+   	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+	<script>
+		var app = new Vue({
+			el: "#app",
+			data: {
+				report: <REPORT_DATA>,
+				config: <CONFIG_DATA>
+			},
+
+			created: function() {
+				//console.log("Started");
+			},
+			methods: {
+				getRowClass: function(name) {
+					if (this.isApproved(name)) {
+						return "";
+					}
+					if (this.isRejected(name) || name === "Unknown") {
+						return "alert-danger";
+					}
+					
+					return "alert-warning";
+				},
+				isApproved: function (name) {
+					return this.contains(this.config.approvedLics, name);
+				},
+				isRejected: function (name) {
+					return this.contains(this.config.rejectedLics, name);
+				},
+				contains(arr, elem) {
+					for (var i = 0; i < arr.length; i++) {
+						if (arr[i] === elem) {
+							return true;
+						}
+					}
+					return false;
+				},
+				showButtons: function(name) {
+					return !this.isApproved(name) && !this.isRejected(name) && name !== "Unknown";
+				},
+				approve: function(name) {
+					this.remove(this.config.rejectedLics, name);
+					if (!this.isApproved(name)) {
+						this.config.approvedLics.push(name);
+					}
+					console.log(this.config.approvedLics.length);
+					console.log(this.config.rejectedLics.length);
+				},
+				reject: function(name) {
+					this.remove(this.config.approvedLics, name);
+					if (!this.isRejected(name)) {
+						this.config.rejectedLics.push(name);
+					}
+					console.log(this.config.approvedLics.length);
+					console.log(this.config.rejectedLics.length);
+				},
+				remove: function(arr, elem) {
+					var index = arr.indexOf(elem);
+					if (index > -1) {
+						arr.splice(index, 1);
+					}
+				}
+			}
+		});
+
+	</script>
+	</body>
+</html>
