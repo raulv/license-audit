@@ -45,7 +45,7 @@
 
     <div v-for="(lic, index) in report.licenses" class="card" style="padding: 10px; margin-bottom: 20px">
       <div class="row">
-        <div class="col-md-10" v-on:click="toggle(index)" style="cursor: pointer;">
+        <div class="col-md-9" v-on:click="toggle(index)" style="cursor: pointer;">
           <span v-bind:id="'icon-' + index" style="padding: 0px 5px;" class="fa fa-plus"></span>
           <span class="badge badge-warning" v-if="lic.status == 'unknown'">Unknown</span>
           <span class="badge badge-warning" v-if="lic.status == ''">Unapproved</span>
@@ -55,19 +55,24 @@
           <a v-bind:href="lic.url" v-if="lic.status != 'unknown'" target="_blank">[ link ]</a>
           <span style="margin: 0px 5px;" class="badge badge-info">{{lic.dependencies.length}} dependencies</span>
         </div>
-        <div class="col-md-2">
-          <div v-if="lic.status != 'unknown'" class="btn-group btn-group-sm">
+        <div class="col-md-3 text-center" v-if="lic.status != 'unknown'" >
+          <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-sm btn-secondary" v-on:click="approve(lic)">
               <span class="fa fa-thumbs-up"></span> Approve
             </button>
             <button type="button" class="btn btn-sm btn-secondary" v-on:click="reject(lic)">
               <span class="fa fa-thumbs-down"></span> Reject
             </button>
-            <!-- 
-            <button type="button" class="btn btn-sm btn-secondary" v-on:click="merge(lic)">
-              <span class="fa fa-compress"></span> Merge name
+          </div>
+          <div class="dropdown">
+            <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+              <span class="fa fa-compress"></span> Merge
             </button>
-             -->
+            <div class="dropdown-menu">
+              <template v-for="licAlias in report.licenses" >
+                <a class="dropdown-item" style="cursor: pointer" v-if="licAlias.status != 'unknown'" v-on:click="alias(lic, licAlias)">{{licAlias.name}}</a>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -106,13 +111,11 @@
 				if (this.report.licenses[0].status == 'unknown') {
 					this.toggle(0);					
 				}
-				
-				//console.log(JSON.stringify(this.report));
 			},
 			methods: {
 				downloadConf() {
 
-					//console.log(JSON.stringify(this.config));
+					console.log(JSON.stringify(this.config));
 					var el = document.createElement('a');
 					el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.config)));
 					el.setAttribute('download', "license-configuration.json");
@@ -179,6 +182,12 @@
 					if (index > -1) {
 						arr.splice(index, 1);
 					}
+				},
+				alias: function(lic, licAlias) {
+					this.remove(this.report.licenses, lic);
+					licAlias.dependencies = licAlias.dependencies.concat(lic.dependencies);
+					
+					this.config.alias[lic.name] = licAlias.name;
 				}
 			}
 		});

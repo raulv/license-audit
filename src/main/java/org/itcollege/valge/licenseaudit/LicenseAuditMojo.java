@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -62,9 +63,9 @@ public class LicenseAuditMojo extends AbstractMojo {
       List<Dependency> allDeps = this.loadAllDependencies(project, localRepository, remoteRepositories, mavenProjectBuilder);
       List<Scope> scopes = this.getScopesInfo(allDeps);
       List<Dependency> bundledDeps = this.filterScopes(allDeps);
-      List<License> licenses = this.groupByLicenses(bundledDeps);
 
       ConfigData config = loadConfiguration();
+      List<License> licenses = this.groupByLicenses(bundledDeps, config);
 
       for (License lic: licenses) {
         if (config.approved.contains(lic.name)) {
@@ -135,9 +136,8 @@ public class LicenseAuditMojo extends AbstractMojo {
   }
 
   @SuppressWarnings("rawtypes")
-  private List<License> groupByLicenses(List<Dependency> deps) {
+  private List<License> groupByLicenses(List<Dependency> deps, ConfigData config) {
     Map<String, License> result = Maps.newHashMap();
-    result.put(License.UNKNOWN.name, License.UNKNOWN);
 
     for (Dependency dep : deps) {
       List licenses = dep.mavenProject.getLicenses();
@@ -146,12 +146,14 @@ public class LicenseAuditMojo extends AbstractMojo {
         lic = License.UNKNOWN;
       }
       else {
+        // TODO: handle dependencies with multiple licenses
+        // Currently only the first entry is used
         org.apache.maven.model.License mavenLic = (org.apache.maven.model.License) dep.mavenProject.getLicenses().get(0);
+        
         lic = new License(mavenLic);
-        // TODO resolve alias
       }
 
-      String name = lic.name;
+      String name = lic.name.toLowerCase();
 
       if (result.containsKey(name)) {
         lic = result.get(name);
@@ -162,9 +164,14 @@ public class LicenseAuditMojo extends AbstractMojo {
 
       lic.dependencies.add(dep);
     }
-
-    if (result.get(License.UNKNOWN.name).dependencies.size() == 0) {
-      result.remove(License.UNKNOWN.name);
+    
+    for (Entry<String, String> entry: config.alias.entrySet()) {
+      String from = entry.getKey().toLowerCase();
+      String to = entry.getValue().toLowerCase();
+      if (result.containsKey(from) && result.containsKey(to)) {
+        License lic = result.remove(from);
+        result.get(to).dependencies.addAll(lic.dependencies);
+      }
     }
 
     return Lists.newArrayList(result.values());
