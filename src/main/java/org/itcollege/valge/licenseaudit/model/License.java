@@ -11,19 +11,21 @@ public class License {
   public final String url;
   public final String name;
   public final List<Dependency> dependencies;
-  public final Boolean isUnknown;
+  
+  // TODO set status from configuration
+  public final String status;
 
   public License(org.apache.maven.model.License lic) {
     this.name = lic.getName();
     this.url = lic.getUrl();
     this.dependencies = Lists.newArrayList();
-    this.isUnknown = null;
+    this.status = "";
   }
 
   private License() {
     this.name = "Unknown license";
     this.url = null;
-    this.isUnknown = true;
+    this.status = "unknown";
     this.dependencies = Lists.newArrayList();
   }
 

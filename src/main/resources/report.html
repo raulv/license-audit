@@ -42,13 +42,16 @@
     <div v-for="(lic, index) in report.licenses" class="card" style="padding: 10px; margin-bottom: 20px">
       <div class="row">
         <div class="col-md-10" v-on:click="toggle(index)" style="cursor: pointer;">
-          <span v-bind:id="'icon-' + index" style="padding: 0px 10px;" class="fa fa-plus"></span> <b style="font-size: 1.5rem">{{lic.name}}</b> <span style="margin: 0px 10px;" class="badge badge-info">{{lic.dependencies.length}} dependencies</span>
-          <span class="badge badge-danger" v-if="lic.isUnknown">Status: Unknown</span>
-          <span class="badge badge-danger" v-if="!lic.isUnknown && !isApproved(lic)">Status: Unapproved</span>
-            <span class="badge badge-success" v-if="!lic.isUnknown && isApproved(lic)">Status: Approved</span>
+          <span v-bind:id="'icon-' + index" style="padding: 0px 5px;" class="fa fa-plus"></span>
+          <b style="font-size: 1.5rem; padding: 0px 5px" v-bind:class="getTitleClass(lic)">{{lic.name}}</b>
+          <span style="margin: 0px 5px;" class="badge badge-info">{{lic.dependencies.length}} dependencies</span>
+          <span class="badge badge-danger" v-if="lic.status == 'unknown'">Unknown</span>
+          <span class="badge badge-danger" v-if="lic.status == ''">Unapproved</span>
+          <span class="badge badge-danger" v-if="lic.status == 'rejected'">Rejected</span>
+          <span class="badge badge-success" v-if="lic.status == 'approved'">Approved</span>
         </div>
         <div class="col-md-2">
-          <div v-if="showButtons(lic)" class="btn-group btn-group-sm">
+          <div v-if="lic.status != 'unknown'" class="btn-group btn-group-sm">
             <button type="button" class="btn btn-sm btn-secondary" v-on:click="approve(lic)">
               <span class="fa fa-thumbs-up"></span> Approve
             </button>
@@ -93,10 +96,13 @@
 				config: <CONFIG_DATA>
 			},
 
-			mounted: function() {
-				if (this.report.licenses[0].isUnknown) {
+			mounted: function() {			
+				// Automatically expand the unknown license group 
+				if (this.report.licenses[0].status = 'unknown') {
 					this.toggle(0);					
 				}
+				
+				//console.log(JSON.stringify(this.report));
 			},
 			methods: {
 				toggle: function(index) {
@@ -112,13 +118,20 @@
 						icon.addClass("fa-plus");
 					}
 				},
-				getRowClass: function(name) {
-					
+				getTitleClass: function(lic) {
+					if (lic.status == 'approved') {
+						return '';
+					}
+					return 'rounded alert-danger';
 				},
 				isApproved: function (lic) {
+					console.log("isApproved ", lic)
 					return 
 						!this.contains(this.config.rejectedLics, lic.name) &&
 						this.contains(this.config.approvedLics, lic.name);
+				},
+				isRejected: function (lic) {
+					console.log("isRejected ", lic)
 				},
 				contains(arr, elem) {
 					for (var i = 0; i < arr.length; i++) {
@@ -128,24 +141,11 @@
 					}
 					return false;
 				},
-				showButtons: function(lic) {
-					return !lic.isUnknown;
+				approve: function(lic) {
+					lic.status = "approved";
 				},
-				approve: function(name) {
-					this.remove(this.config.rejectedLics, name);
-					if (!this.isApproved(name)) {
-						this.config.approvedLics.push(name);
-					}
-					console.log(this.config.approvedLics.length);
-					console.log(this.config.rejectedLics.length);
-				},
-				reject: function(name) {
-					this.remove(this.config.approvedLics, name);
-					if (!this.isRejected(name)) {
-						this.config.rejectedLics.push(name);
-					}
-					console.log(this.config.approvedLics.length);
-					console.log(this.config.rejectedLics.length);
+				reject: function(lic) {
+					lic.status = "rejected";
 				},
 				remove: function(arr, elem) {
 					var index = arr.indexOf(elem);
