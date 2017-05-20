@@ -70,7 +70,7 @@
             </button>
             <div class="dropdown-menu">
               <template v-for="licAlias in report.licenses" >
-                <a class="dropdown-item" style="cursor: pointer" v-if="licAlias.status != 'unknown'" v-on:click="alias(lic, licAlias)">{{licAlias.name}}</a>
+                <a class="dropdown-item" style="cursor: pointer" v-if="licAlias.status != 'unknown' && licAlias.name != lic.name" v-on:click="alias(lic, licAlias)">{{licAlias.name}}</a>
               </template>
             </div>
           </div>
@@ -82,6 +82,7 @@
             <th>Artifact</th>
             <th width="15%">Version</th>
             <th width="15%">Scope</th>
+            <th v-if="lic.status == 'unknown'"></th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +90,22 @@
             <td>{{dep.groupId}}:<b>{{dep.artifactId}}</b></td>
             <td>{{dep.version}}</td>
             <td>{{dep.scope}}</td>
-            <!-- <td></td> -->
+            <td v-if="lic.status =='unknown'">
+              <div class="dropdown">
+                <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="fa fa-document"></span> Choose license
+                </button>
+                <div class="dropdown-menu">
+                  <template v-for="licChoose in report.licenses">
+                    <a v-if="licChoose.status != 'unknown'" class="dropdown-item" style="cursor: pointer" v-on:click="setLicense(dep, licChoose, lic)">{{licChoose.name}}</a>
+                  </template>
+                  <div class="dropdown-divider"></div>
+                  <template v-for="licChoose in commonLicenses" >
+                    <a class="dropdown-item" style="cursor: pointer" v-on:click="setLicense(dep, licChoose, lic)">{{licChoose.name}}</a>
+                  </template>
+                </div>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -103,7 +119,22 @@
 			el: "#app",
 			data: {
 				report: <REPORT_DATA>,
-				config: <CONFIG_DATA>
+				config: <CONFIG_DATA>,
+				commonLicenses: [
+				  { name: "Apache License 2.0", url: "https://opensource.org/licenses/Apache-2.0"},
+				  { name: "The 3-Clause BSD License", url: "https://opensource.org/licenses/BSD-3-Clause"},
+				  { name: "The 2-Clause BSD License", url: "https://opensource.org/licenses/BSD-2-Clause"},
+				  { name: "GNU General Public License version 2", url: "https://opensource.org/licenses/GPL-2.0"},
+				  { name: "GNU General Public License version 3", url: "https://opensource.org/licenses/GPL-3.0"},
+				  { name: "GNU Lesser General Public License version 2.1", url: "https://opensource.org/licenses/LGPL-2.1"},
+				  { name: "GNU Lesser General Public License version 3.0", url: "https://opensource.org/licenses/LGPL-3.0"},
+				  { name: "GNU Affero General Public License version 3", url: "https://opensource.org/licenses/AGPL-3.0"},
+				  { name: "The MIT License", url: "https://opensource.org/licenses/MIT"},
+				  { name: "Mozilla Public License 2.0 (MPL-2.0)", url: "https://opensource.org/licenses/MPL-2.0"},
+				  { name: "Common Development and Distribution License (CDDL-1.0)", url: "https://opensource.org/licenses/CDDL-1.0"},
+				  { name: "Eclipse Public License 1.0 (EPL-1.0)", url: "https://opensource.org/licenses/EPL-1.0"},
+				  { name: "European Union Public Licence, version 1.1 (EUPL-1.1)", url: "https://joinup.ec.europa.eu/community/eupl/og_page/eupl"}
+				]
 			},
 
 			mounted: function() {			
@@ -188,6 +219,33 @@
 					licAlias.dependencies = licAlias.dependencies.concat(lic.dependencies);
 					
 					this.config.alias[lic.name] = licAlias.name;
+				},
+				setLicense: function(dep, newLic, oldLic) {
+					if (this.contains(this.commonLicenses, newLic)) {
+						var licEntry = null;
+						for (var i = 0; i < this.report.licenses.length; i++) {
+							if (this.report.licenses[i].name == newLic.name) {
+								licEntry = this.report.licenses[i];
+							}
+						}
+						if (licEntry == null) {
+							licEntry = {
+								name: newLic.name, url: newLic.url, dependencies: [], status: ''
+							};
+							this.report.licenses.push(licEntry);
+						}
+					}
+					else {
+						licEntry = newLic;
+					}
+					
+					licEntry.dependencies.push(dep);
+					this.config.licenseOverride[dep.groupId + ":" + dep.artifactId] = { name: licEntry.name, url: licEntry.url };
+					
+					this.remove(oldLic.dependencies, dep);
+					if (oldLic.dependencies.length == 0) {
+						this.remove(this.report.licenses, oldLic);
+					}
 				}
 			}
 		});

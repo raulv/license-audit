@@ -11,5 +11,6 @@ public class ConfigData {
   public List<String> approved = Lists.newArrayList();
   public List<String> rejected = Lists.newArrayList();
   public Map<String, String> alias = Maps.newHashMap();
+  public Map<String, License> licenseOverride = Maps.newHashMap();
 
 }

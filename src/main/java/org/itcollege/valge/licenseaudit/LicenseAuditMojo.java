@@ -29,9 +29,7 @@ import org.itcollege.valge.licenseaudit.model.Project;
 import org.itcollege.valge.licenseaudit.model.ReportData;
 import org.itcollege.valge.licenseaudit.model.Scope;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -143,7 +141,12 @@ public class LicenseAuditMojo extends AbstractMojo {
       List licenses = dep.mavenProject.getLicenses();
       License lic = null;
       if (licenses == null || licenses.size() == 0) {
-        lic = License.UNKNOWN;
+        
+        lic = config.licenseOverride.get(dep.groupId + ":" + dep.artifactId);
+        if (lic == null) {
+          lic = License.UNKNOWN;
+        }
+        
       }
       else {
         // TODO: handle dependencies with multiple licenses
@@ -195,7 +198,7 @@ public class LicenseAuditMojo extends AbstractMojo {
 
   @SuppressWarnings("unchecked")
   public List<Dependency> loadAllDependencies(MavenProject project, ArtifactRepository localRepository,
-      List<ArtifactRepository> remoteRepositories, MavenProjectBuilder mavenProjectBuilder) {
+      List<ArtifactRepository> remoteRepositories, MavenProjectBuilder mavenProjectBuilder) throws MojoExecutionException {
 
     Set<Artifact> artifacts = project.getArtifacts();
 
@@ -208,8 +211,7 @@ public class LicenseAuditMojo extends AbstractMojo {
         deps.add(new Dependency(artifact, depMavenProject));
       }
       catch (ProjectBuildingException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+        throw new MojoExecutionException("Failed to load dependencies", e);
       }
     }
 
