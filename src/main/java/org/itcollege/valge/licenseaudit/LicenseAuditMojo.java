@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -25,6 +26,7 @@ import org.itcollege.valge.licenseaudit.model.Dependency;
 import org.itcollege.valge.licenseaudit.model.License;
 import org.itcollege.valge.licenseaudit.model.Project;
 import org.itcollege.valge.licenseaudit.model.ReportData;
+import org.itcollege.valge.licenseaudit.model.Scope;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,8 +34,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
+import com.google.inject.internal.util.Maps;
 
-@Mojo(name = "run", requiresDependencyResolution = ResolutionScope.RUNTIME_PLUS_SYSTEM)
+@Mojo(name = "run", requiresDependencyResolution = ResolutionScope.TEST)
 public class LicenseAuditMojo extends AbstractMojo {
 
   @Parameter(defaultValue = "${project}", required = true, readonly = true)
@@ -48,37 +51,105 @@ public class LicenseAuditMojo extends AbstractMojo {
   @Component
   private MavenProjectBuilder mavenProjectBuilder;
 
+  // TODO: Make the bundled scopes configurable
+  private Set<String> bundledScopes = Sets.newHashSet("compile");
+
   @Override
   public void execute() throws MojoExecutionException, MojoFailureException {
-    List<Dependency> deps = this.loadDependencies(project, localRepository, remoteRepositories, mavenProjectBuilder);
-    Set<License> uniqueLicenses = this.findUniqueLicenses(deps);
     try {
+      List<Dependency> allDeps = this.loadAllDependencies(project, localRepository, remoteRepositories, mavenProjectBuilder);
+      List<Scope> scopes = this.getScopesInfo(allDeps);
+      List<Dependency> bundledDeps = this.filterScopes(allDeps);
+      List<License> licenses = this.groupByLicenses(bundledDeps);
+
+      // TODO: Load config from file
       ConfigData config = new ConfigData();
 
       String content = getHtmlContent(
-          new ReportData(new Project(this.project, deps), uniqueLicenses),
+          new ReportData(new Project(this.project, scopes), licenses, bundledScopes),
           config);
-      
+
       Files.write(content, new File(getOutputDir(), "report.html"), Charset.defaultCharset());
     }
     catch (Exception e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      throw new MojoExecutionException("License audit failed", e);
     }
   }
 
-  private Set<License> findUniqueLicenses(List<Dependency> dependencies) {
-    Set<License> lics = Sets.newHashSet();
-    for (Dependency dep: dependencies) {
-      lics.add(dep.license);
+  private List<Dependency> filterScopes(List<Dependency> dependencies) {
+    List<Dependency> result = Lists.newArrayList();
+    for (Dependency dep : dependencies) {
+      if (dep.scope != null && bundledScopes.contains(dep.scope.toLowerCase())) {
+        result.add(dep);
+      }
     }
-    return lics;
+    return result;
+  }
+
+  private List<Scope> getScopesInfo(List<Dependency> dependencies) {
+    Map<String, Scope> scopes = Maps.newHashMap();
+
+    for (Dependency dep : dependencies) {
+      if (dep.scope == null) {
+        continue;
+      }
+      String scopeName = dep.scope.toLowerCase();
+
+      Scope sc = null;
+      if (scopes.containsKey(scopeName)) {
+        sc = scopes.get(scopeName);
+      }
+      else {
+        sc = new Scope(scopeName, bundledScopes.contains(scopeName));
+        scopes.put(scopeName, sc);
+      }
+
+      sc.dependencyCount++;
+    }
+
+    return Lists.newArrayList(scopes.values());
+  }
+
+  @SuppressWarnings("rawtypes")
+  private List<License> groupByLicenses(List<Dependency> deps) {
+    Map<String, License> result = Maps.newHashMap();
+    result.put(License.UNKNOWN.name, License.UNKNOWN);
+    
+    for (Dependency dep : deps) {
+      List licenses = dep.mavenProject.getLicenses();
+      License lic = null;
+      if (licenses == null || licenses.size() == 0) {
+        lic = License.UNKNOWN;
+      }
+      else {
+        org.apache.maven.model.License mavenLic = (org.apache.maven.model.License) dep.mavenProject.getLicenses().get(0);
+        lic = new License(mavenLic);
+        // TODO resolve alias
+      }
+
+      String name = lic.name;
+
+      if (result.containsKey(name)) {
+        lic = result.get(name);
+      }
+      else {
+        result.put(name, lic);
+      }
+
+      lic.dependencies.add(dep);
+    }
+    
+    if (result.get(License.UNKNOWN.name).dependencies.size() == 0) {
+      result.remove(License.UNKNOWN.name);
+    }
+
+    return Lists.newArrayList(result.values());
   }
 
   String getHtmlContent(ReportData reportData, ConfigData configData) throws IOException, JsonProcessingException {
     InputStream in = getClass().getResourceAsStream("/report.html");
     String templateContent = CharStreams.toString(new InputStreamReader(in));
-    
+
     ObjectMapper mapper = new ObjectMapper();
     return templateContent
         .replace("<REPORT_DATA>", mapper.writeValueAsString(reportData))
@@ -87,14 +158,12 @@ public class LicenseAuditMojo extends AbstractMojo {
 
   private File getOutputDir() throws IOException {
     File dir = new File(project.getBuild().getDirectory(), "license-audit");
-    if (!dir.exists()) {
-      dir.mkdir();
-    }
+    dir.mkdirs();
     return dir;
   }
 
   @SuppressWarnings("unchecked")
-  public List<Dependency> loadDependencies(MavenProject project, ArtifactRepository localRepository,
+  public List<Dependency> loadAllDependencies(MavenProject project, ArtifactRepository localRepository,
       List<ArtifactRepository> remoteRepositories, MavenProjectBuilder mavenProjectBuilder) {
 
     Set<Artifact> artifacts = project.getArtifacts();

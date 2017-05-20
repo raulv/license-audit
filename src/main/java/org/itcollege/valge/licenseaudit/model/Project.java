@@ -10,15 +10,14 @@ public class Project {
   public final String artifactId;
   public final String groupId;
   public final String version;
-  public final List<Dependency> dependencies;
+  public final List<Scope> scopes;
 
-  public Project(MavenProject project, List<Dependency> deps) {
-    name = project.getName();
-    artifactId = project.getArtifactId();
-    groupId = project.getGroupId();
-    version = project.getVersion();
-
-    dependencies = deps;
+  public Project(MavenProject project, List<Scope> scopes) {
+    this.name = project.getName();
+    this.artifactId = project.getArtifactId();
+    this.groupId = project.getGroupId();
+    this.version = project.getVersion();
+    this.scopes = scopes;
   }
 
 }
