@@ -30,9 +30,13 @@
                     <td><span style="margin: 0px 10px;" class="badge badge-info">{{sc.dependencyCount}} dependencies</span></td>
                   </tr>
                 </table>
-
               </div>
             </div>
+          </div>
+          <div class="card-footer text-center">
+            <button class="btn btn-success" v-on:click="downloadConf()">
+              <span class="fa fa-download"></span> Download configuration
+            </button>
           </div>
         </div>
       </div>
@@ -43,12 +47,13 @@
       <div class="row">
         <div class="col-md-10" v-on:click="toggle(index)" style="cursor: pointer;">
           <span v-bind:id="'icon-' + index" style="padding: 0px 5px;" class="fa fa-plus"></span>
-          <b style="font-size: 1.5rem; padding: 0px 5px" v-bind:class="getTitleClass(lic)">{{lic.name}}</b>
-          <span style="margin: 0px 5px;" class="badge badge-info">{{lic.dependencies.length}} dependencies</span>
-          <span class="badge badge-danger" v-if="lic.status == 'unknown'">Unknown</span>
-          <span class="badge badge-danger" v-if="lic.status == ''">Unapproved</span>
+          <span class="badge badge-warning" v-if="lic.status == 'unknown'">Unknown</span>
+          <span class="badge badge-warning" v-if="lic.status == ''">Unapproved</span>
           <span class="badge badge-danger" v-if="lic.status == 'rejected'">Rejected</span>
           <span class="badge badge-success" v-if="lic.status == 'approved'">Approved</span>
+          <b style="font-size: 1.5rem; padding: 0px 5px" v-bind:class="getTitleClass(lic)">{{lic.name}}</b>
+          <a v-bind:href="lic.url" v-if="lic.status != 'unknown'" target="_blank">[ link ]</a>
+          <span style="margin: 0px 5px;" class="badge badge-info">{{lic.dependencies.length}} dependencies</span>
         </div>
         <div class="col-md-2">
           <div v-if="lic.status != 'unknown'" class="btn-group btn-group-sm">
@@ -98,13 +103,24 @@
 
 			mounted: function() {			
 				// Automatically expand the unknown license group 
-				if (this.report.licenses[0].status = 'unknown') {
+				if (this.report.licenses[0].status == 'unknown') {
 					this.toggle(0);					
 				}
 				
 				//console.log(JSON.stringify(this.report));
 			},
 			methods: {
+				downloadConf() {
+
+					//console.log(JSON.stringify(this.config));
+					var el = document.createElement('a');
+					el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.config)));
+					el.setAttribute('download', "license-configuration.json");
+					el.style.display = 'none';
+					document.body.appendChild(el);
+					el.click();
+					document.body.removeChild(el);
+				},
 				toggle: function(index) {
 					var table =  $("#table-" + index);
 					var icon =  $("#icon-" + index);
@@ -121,6 +137,9 @@
 				getTitleClass: function(lic) {
 					if (lic.status == 'approved') {
 						return '';
+					}
+					else if (lic.status == '' || lic.status == 'unknown') {
+						return 'rounded alert-warning';
 					}
 					return 'rounded alert-danger';
 				},
@@ -143,9 +162,17 @@
 				},
 				approve: function(lic) {
 					lic.status = "approved";
+					this.remove(this.config.rejected, lic.name);
+					if (!this.contains(this.config.approved, lic.name)) {
+						this.config.approved.push(lic.name);
+					}
 				},
 				reject: function(lic) {
 					lic.status = "rejected";
+					this.remove(this.config.approved, lic.name);
+					if (!this.contains(this.config.rejected, lic.name)) {
+						this.config.rejected.push(lic.name);
+					}
 				},
 				remove: function(arr, elem) {
 					var index = arr.indexOf(elem);

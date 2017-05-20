@@ -12,8 +12,7 @@ public class License {
   public final String name;
   public final List<Dependency> dependencies;
   
-  // TODO set status from configuration
-  public final String status;
+  public String status;
 
   public License(org.apache.maven.model.License lic) {
     this.name = lic.getName();

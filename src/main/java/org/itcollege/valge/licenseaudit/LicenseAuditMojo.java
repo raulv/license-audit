@@ -28,7 +28,9 @@ import org.itcollege.valge.licenseaudit.model.Project;
 import org.itcollege.valge.licenseaudit.model.ReportData;
 import org.itcollege.valge.licenseaudit.model.Scope;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -62,9 +64,17 @@ public class LicenseAuditMojo extends AbstractMojo {
       List<Dependency> bundledDeps = this.filterScopes(allDeps);
       List<License> licenses = this.groupByLicenses(bundledDeps);
 
-      // TODO: Load config from file
-      ConfigData config = new ConfigData();
+      ConfigData config = loadConfiguration();
 
+      for (License lic: licenses) {
+        if (config.approved.contains(lic.name)) {
+          lic.status = "approved";
+        }
+        else if (config.rejected.contains(lic.name)) {
+          lic.status = "rejected";
+        }
+      }
+      
       String content = getHtmlContent(
           new ReportData(new Project(this.project, scopes), licenses, bundledScopes),
           config);
@@ -74,6 +84,20 @@ public class LicenseAuditMojo extends AbstractMojo {
     catch (Exception e) {
       throw new MojoExecutionException("License audit failed", e);
     }
+  }
+
+  private ConfigData loadConfiguration() throws MojoExecutionException {
+    File configFile = new File(project.getBasedir(), "license-configuration.json");
+    if (configFile.exists()) {
+      try {
+        return new ObjectMapper().readValue(configFile, ConfigData.class);
+      }
+      catch (IOException e) {
+        throw new MojoExecutionException("Failed to read license-audit.json - the file seems to be corrupted", e);
+      }
+    }
+
+    return new ConfigData();
   }
 
   private List<Dependency> filterScopes(List<Dependency> dependencies) {
@@ -114,7 +138,7 @@ public class LicenseAuditMojo extends AbstractMojo {
   private List<License> groupByLicenses(List<Dependency> deps) {
     Map<String, License> result = Maps.newHashMap();
     result.put(License.UNKNOWN.name, License.UNKNOWN);
-    
+
     for (Dependency dep : deps) {
       List licenses = dep.mavenProject.getLicenses();
       License lic = null;
@@ -138,7 +162,7 @@ public class LicenseAuditMojo extends AbstractMojo {
 
       lic.dependencies.add(dep);
     }
-    
+
     if (result.get(License.UNKNOWN.name).dependencies.size() == 0) {
       result.remove(License.UNKNOWN.name);
     }
