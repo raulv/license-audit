@@ -151,11 +151,12 @@ public class LicenseAuditMojo extends AbstractMojo {
       else {
         // TODO: handle dependencies with multiple licenses
         // Currently only the first entry is used
-        org.apache.maven.model.License mavenLic = (org.apache.maven.model.License) dep.mavenProject.getLicenses().get(0);
-        
+        org.apache.maven.model.License mavenLic = (org.apache.maven.model.License) dep.mavenProject.getLicenses().get(0);        
         lic = new License(mavenLic);
+        if (lic.name == null) {
+          lic = License.UNKNOWN;
+        }
       }
-
       String name = lic.name.toLowerCase();
 
       if (result.containsKey(name)) {
