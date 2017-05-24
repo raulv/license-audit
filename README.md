@@ -20,7 +20,7 @@ Add the plugin to your project's pom.xml
 ...
 ```
 
-Run ***mvn license-audit:run** in your project to generate the report.
+Run ***mvn license-audit:run*** in your project to generate the report.
 
 Open the report from **target/license-audit/report.html**
 
