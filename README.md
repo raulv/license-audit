@@ -11,13 +11,17 @@ The build also runs the license audit on itself. You can view the report in **ta
 ### Using the plugin
 Add the plugin to your project's pom.xml
 ```xml
-...
-<dependency>
-    <groupId>org.itcollege.valge</groupId>
-    <artifactId>license-audit-maven-plugin</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-</dependency>
-...
+<project>
+  ...
+  <plugins>
+    <plugin>
+        <groupId>org.itcollege.valge</groupId>
+        <artifactId>license-audit-maven-plugin</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </plugin>
+  </plugins>
+  ...
+</project>
 ```
 
 Run ***mvn license-audit:run*** in your project to generate the report.
