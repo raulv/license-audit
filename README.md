@@ -4,7 +4,7 @@ The plugin was created as part of Raul Valge's bachelor's thesis for "Auditing S
 
 ### Installation
 The plugin is currently not available from any repositories so it needs to be manually installed.
-Download the source and run ***mvn install**.
+Download the source and run ***mvn install***.
 
 The build also runs the license audit on itself. You can view the report in **target/license-audit/report.html**
 
