@@ -1,0 +1,15 @@
+{
+	"approved": ["Public Domain", "The Apache Software License, Version 2.0", "Codehaus custom license"],
+	"rejected": [],
+	"alias": {},
+	"licenseOverride": {
+		"org.codehaus.plexus:plexus-container-default": {
+			"name":"The Apache Software License, Version 2.0",
+			"url":"http://www.apache.org/licenses/LICENSE-2.0.txt"
+		},
+		"classworlds:classworlds": {
+			"name":"Codehaus custom license",
+			"url":"https://github.com/codehaus/classworlds/blob/master/classworlds/LICENSE.txt"
+		}
+	}
+}
